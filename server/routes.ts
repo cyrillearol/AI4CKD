@@ -245,7 +245,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Generate beautiful PDF report using PDFKit
-      const PDFDocument = require('pdfkit');
+      const PDFDocument = (await import('pdfkit')).default;
       
       // Get consultations and alerts for this patient
       const consultations = await storage.getConsultationsByPatientId(patient.id);

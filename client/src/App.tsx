@@ -15,6 +15,7 @@ import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
+import Parametres from "@/pages/parametres";
 
 function Router() {
   return (
@@ -34,6 +35,7 @@ function Router() {
                   <ProtectedRoute path="/consultations" component={Consultations} />
                   <ProtectedRoute path="/alerts" component={AlertsPage} />
                   <ProtectedRoute path="/reports" component={ReportsPage} />
+                  <ProtectedRoute path="/settings" component={Parametres} />
                   <Route component={NotFound} />
                 </Switch>
               </main>

@@ -4,16 +4,54 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import PatientCard from "@/components/patients/patient-card";
 import PatientForm from "@/components/patients/patient-form";
+import PatientEditForm from "@/components/patients/patient-edit-form";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction
+} from "@/components/ui/alert-dialog";
 import { Search, Plus } from "lucide-react";
 import { useState } from "react";
 import type { Patient } from "@shared/schema";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "@/hooks/use-toast";
 
 export default function Patients() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
+  const [deletingPatient, setDeletingPatient] = useState<Patient | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: patients = [], isLoading } = useQuery<Patient[]>({
     queryKey: ["/api/patients"]
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await fetch(`/api/patients/${id}`, { method: "DELETE" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
+      toast({
+        title: "Patient supprimé",
+        description: "Le patient a été supprimé avec succès."
+      });
+      setDeletingPatient(null);
+    },
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le patient.",
+        variant: "destructive"
+      });
+    }
   });
 
   const filteredPatients = patients.filter(patient =>
@@ -80,14 +118,54 @@ export default function Patients() {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="flex flex-col gap-4 items-center">
               {filteredPatients.map(patient => (
-                <PatientCard key={patient.id} patient={patient} showDetails />
+                <div key={patient.id} className="w-full">
+                  <PatientCard 
+                    patient={patient} 
+                    showDetails
+                    onEdit={setEditingPatient}
+                    onDelete={setDeletingPatient}
+                  />
+                </div>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Modal édition patient */}
+      {editingPatient && (
+        <PatientEditForm 
+          patient={editingPatient}
+          open={!!editingPatient}
+          onOpenChange={(open) => !open && setEditingPatient(null)}
+        />
+      )}
+
+      {/* Modal suppression patient */}
+      {deletingPatient && (
+        <AlertDialog open={!!deletingPatient} onOpenChange={(open) => !open && setDeletingPatient(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+              <AlertDialogDescription>
+                Êtes-vous sûr de vouloir supprimer le patient {deletingPatient.firstName} {deletingPatient.lastName} ?
+                Cette action est irréversible et supprimera également toutes les consultations et alertes associées.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annuler</AlertDialogCancel>
+              <AlertDialogAction 
+                className="bg-red-600 hover:bg-red-700"
+                onClick={() => deleteMutation.mutate(deletingPatient.id)}
+              >
+                Supprimer
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }

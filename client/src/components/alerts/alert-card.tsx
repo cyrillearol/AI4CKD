@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import type { AlertWithPatient } from "@shared/schema";
+import { useLocation } from "wouter";
 
 interface AlertCardProps {
   alert: AlertWithPatient;
@@ -28,6 +29,7 @@ const severityConfig = {
 };
 
 export default function AlertCard({ alert }: AlertCardProps) {
+  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const config = severityConfig[alert.severity as keyof typeof severityConfig];
 
@@ -87,9 +89,9 @@ export default function AlertCard({ alert }: AlertCardProps) {
         >
           {alert.severity.toUpperCase()}
         </Badge>
-        <Button 
-          size="sm" 
-          className="bg-medical-blue hover:bg-blue-700"
+        <Button
+          size="sm"
+          onClick={() => setLocation(`/patients/${alert.patient.id}`)}
         >
           Voir Patient
         </Button>

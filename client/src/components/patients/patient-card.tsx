@@ -3,10 +3,13 @@ import { Badge } from "@/components/ui/badge";
 import { FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Patient } from "@shared/schema";
+import { useLocation } from "wouter";
 
 interface PatientCardProps {
   patient: Patient;
   showDetails?: boolean;
+  onEdit?: (patient: Patient) => void;
+  onDelete?: (patient: Patient) => void;
 }
 
 const stageColors = {
@@ -65,14 +68,21 @@ const downloadPDF = async (patientId: string, patientName: string) => {
   }
 };
 
-export default function PatientCard({ patient, showDetails = false }: PatientCardProps) {
+export default function PatientCard({ patient, showDetails = false, onEdit, onDelete }: PatientCardProps) {
+  const [, setLocation] = useLocation();
   const initials = getInitials(patient.firstName, patient.lastName);
   const avatarColor = getAvatarColor(patient.firstName + patient.lastName);
   const age = calculateAge(patient.dateOfBirth);
   const fullName = `${patient.firstName} ${patient.lastName}`;
 
   return (
-    <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+    <div
+      className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors overflow-hidden"
+      onClick={() => setLocation(`/patients/${patient.id}`)}
+      tabIndex={0}
+      role="button"
+      aria-label={`Voir le patient ${patient.firstName} ${patient.lastName}`}
+    >
       <div className="flex items-center space-x-3">
         <div className={cn(
           "w-10 h-10 text-white rounded-full flex items-center justify-center font-semibold text-sm",
@@ -96,7 +106,7 @@ export default function PatientCard({ patient, showDetails = false }: PatientCar
             </>
           )}
           <p className="text-xs text-gray-400">
-            Créé: {new Date(patient.createdAt.toString()).toLocaleDateString('fr-FR')}
+            Créé: {new Date(String(patient.createdAt)).toLocaleDateString('fr-FR')}
           </p>
         </div>
       </div>
@@ -118,6 +128,37 @@ export default function PatientCard({ patient, showDetails = false }: PatientCar
         >
           <FileText className="h-4 w-4" />
         </Button>
+        {/* Boutons actions visibles */}
+        <div className="flex space-x-2 ml-2">
+          {typeof onEdit === 'function' && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-blue-600 font-semibold border-blue-600 hover:bg-blue-50 hover:text-blue-700"
+              onClick={e => {
+                e.stopPropagation();
+                onEdit(patient);
+              }}
+              aria-label="Modifier"
+            >
+              Modifier
+            </Button>
+          )}
+          {typeof onDelete === 'function' && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-red-600 font-semibold border-red-600 hover:bg-red-50 hover:text-red-700"
+              onClick={e => {
+                e.stopPropagation();
+                onDelete(patient);
+              }}
+              aria-label="Supprimer"
+            >
+              Supprimer
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
