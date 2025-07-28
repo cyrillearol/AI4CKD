@@ -1,14 +1,29 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, FileText, User } from "lucide-react";
+import { Plus, Calendar, FileText, User } from "lucide-react";
+import ConsultationForm from "@/components/consultations/consultation-form";
 import type { Consultation } from "@shared/schema";
 
 export default function Consultations() {
+  const [showForm, setShowForm] = useState(false);
+  
   const { data: consultations = [], isLoading } = useQuery<Consultation[]>({
     queryKey: ["/api/consultations"]
   });
+
+  if (showForm) {
+    return (
+      <div className="space-y-6">
+        <ConsultationForm 
+          onSuccess={() => setShowForm(false)}
+          onCancel={() => setShowForm(false)}
+        />
+      </div>
+    );
+  }
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('fr-FR', {
@@ -24,8 +39,11 @@ export default function Consultations() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Consultations</h1>
-        <Button className="bg-medical-blue hover:bg-blue-700">
-          <FileText className="mr-2 h-4 w-4" />
+        <Button 
+          className="bg-medical-blue hover:bg-blue-700"
+          onClick={() => setShowForm(true)}
+        >
+          <Plus className="mr-2 h-4 w-4" />
           Nouvelle Consultation
         </Button>
       </div>
@@ -47,8 +65,11 @@ export default function Consultations() {
           ) : consultations.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-gray-500 mb-4">Aucune consultation enregistrée</div>
-              <Button className="bg-medical-blue hover:bg-blue-700">
-                <FileText className="mr-2 h-4 w-4" />
+              <Button 
+                className="bg-medical-blue hover:bg-blue-700"
+                onClick={() => setShowForm(true)}
+              >
+                <Plus className="mr-2 h-4 w-4" />
                 Créer la première consultation
               </Button>
             </div>

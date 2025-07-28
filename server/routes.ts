@@ -150,8 +150,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Patient not found" });
       }
 
-      // Temporarily disabled PDF generation
-      res.status(503).json({ message: "PDF generation temporarily unavailable" });
+      // Generate simple PDF report
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="rapport-${patient.firstName}-${patient.lastName}.pdf"`);
+      
+      // Simple PDF content
+      const pdfContent = `%PDF-1.4
+1 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+
+2 0 obj
+<<
+/Type /Pages
+/Kids [3 0 R]
+/Count 1
+>>
+endobj
+
+3 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/MediaBox [0 0 612 792]
+/Contents 4 0 R
+/Resources <<
+/Font <<
+/F1 5 0 R
+>>
+>>
+>>
+endobj
+
+4 0 obj
+<<
+/Length 200
+>>
+stream
+BT
+/F1 12 Tf
+72 720 Td
+(Rapport Medical - ${patient.firstName} ${patient.lastName}) Tj
+0 -20 Td
+(Stade MRC: ${patient.ckdStage}) Tj
+0 -20 Td
+(Date de naissance: ${new Date(patient.dateOfBirth).toLocaleDateString('fr-FR')}) Tj
+0 -20 Td
+(Genre: ${patient.gender}) Tj
+ET
+endstream
+endobj
+
+5 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica
+>>
+endobj
+
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000274 00000 n 
+0000000526 00000 n 
+trailer
+<<
+/Size 6
+/Root 1 0 R
+>>
+startxref
+625
+%%EOF`;
+      
+      res.send(Buffer.from(pdfContent));
     } catch (error) {
       res.status(500).json({ message: "Failed to generate PDF report" });
     }

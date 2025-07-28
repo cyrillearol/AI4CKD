@@ -15,9 +15,14 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, User } from "lucide-react";
 import { z } from "zod";
 
-const consultationFormSchema = insertConsultationSchema.extend({
+const consultationFormSchema = z.object({
+  patientId: z.string().min(1, "Patient requis"),
   creatinine: z.string().min(1, "Créatinine requise"),
   weight: z.string().min(1, "Poids requis"),
+  systolicBP: z.number().min(50).max(300),
+  diastolicBP: z.number().min(30).max(200),
+  notes: z.string().optional(),
+  doctorName: z.string().min(1, "Nom du médecin requis"),
 });
 
 type ConsultationFormData = z.infer<typeof consultationFormSchema>;
@@ -61,9 +66,13 @@ export default function ConsultationForm({
   const createConsultationMutation = useMutation({
     mutationFn: async (data: ConsultationFormData) => {
       const response = await apiRequest("POST", "/api/consultations", {
-        ...data,
+        patientId: data.patientId,
         creatinine: parseFloat(data.creatinine),
         weight: parseFloat(data.weight),
+        systolicBP: data.systolicBP,
+        diastolicBP: data.diastolicBP,
+        notes: data.notes || "",
+        doctorName: data.doctorName,
       });
       return response.json();
     },
@@ -214,7 +223,7 @@ export default function ConsultationForm({
                       <Input 
                         type="number" 
                         placeholder="120"
-                        {...field}
+                        value={field.value || ""}
                         onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                       />
                     </FormControl>
@@ -232,7 +241,7 @@ export default function ConsultationForm({
                       <Input 
                         type="number" 
                         placeholder="80"
-                        {...field}
+                        value={field.value || ""}
                         onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                       />
                     </FormControl>

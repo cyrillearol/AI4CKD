@@ -24,11 +24,11 @@ export interface IStorage {
 
   // Alerts
   getAlert(id: string): Promise<Alert | undefined>;
-  getAlerts(): Promise<AlertWithPatient[]>;
-  getUnreadAlerts(): Promise<AlertWithPatient[]>;
+  getAlertsWithPatients(): Promise<AlertWithPatient[]>;
+  getUnreadAlertsWithPatients(): Promise<AlertWithPatient[]>;
   getAlertsByPatientId(patientId: string): Promise<Alert[]>;
   createAlert(alert: InsertAlert): Promise<Alert>;
-  markAlertAsRead(id: string): Promise<Alert>;
+  markAlertAsRead(id: string): Promise<void>;
 
   // Alert Thresholds
   getAlertThresholds(): Promise<AlertThreshold[]>;
@@ -141,7 +141,7 @@ export class DatabaseStorage implements IStorage {
     return alert || undefined;
   }
 
-  async getAlerts(): Promise<AlertWithPatient[]> {
+  async getAlertsWithPatients(): Promise<AlertWithPatient[]> {
     const result = await db
       .select({
         alert: alerts,
@@ -160,7 +160,7 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async getUnreadAlerts(): Promise<AlertWithPatient[]> {
+  async getUnreadAlertsWithPatients(): Promise<AlertWithPatient[]> {
     const result = await db
       .select({
         alert: alerts,
