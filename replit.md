@@ -10,6 +10,10 @@ AI4CKD is a comprehensive web application designed for managing patients with Ch
 - ✅ Medical dashboard with patient management capabilities
 - ✅ PostgreSQL database with sample data loaded
 - ✅ Demo user: dr.kouakou / medecin2024
+- ✅ Full CRUD operations for patients and consultations
+- ✅ Enhanced PDF generation with professional formatting using PDFKit
+- ✅ Patient details page with complete medical history
+- ✅ Edit/delete functionality for all entities
 
 ## User Preferences
 

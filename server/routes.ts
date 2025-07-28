@@ -46,6 +46,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/patients/:id", async (req, res) => {
+    try {
+      const validatedData = insertPatientSchema.partial().parse(req.body);
+      const patient = await storage.updatePatient(req.params.id, validatedData);
+      res.json(patient);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid patient data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update patient" });
+    }
+  });
+
+  app.delete("/api/patients/:id", async (req, res) => {
+    try {
+      await storage.deletePatient(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete patient" });
+    }
+  });
+
   // Consultations routes
   app.get("/api/consultations", async (req, res) => {
     try {
@@ -102,6 +124,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid consultation data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create consultation", error: String(error) });
+    }
+  });
+
+  app.put("/api/consultations/:id", async (req, res) => {
+    try {
+      const consultationData = {
+        patientId: req.body.patientId,
+        creatinine: req.body.creatinine,
+        weight: req.body.weight,
+        systolicBP: req.body.systolicBP,
+        diastolicBP: req.body.diastolicBP,
+        notes: req.body.notes || "",
+        doctorName: req.body.doctorName,
+        updatedAt: new Date(),
+      };
+
+      const consultation = await storage.updateConsultation(req.params.id, consultationData);
+      res.json(consultation);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update consultation", error: String(error) });
+    }
+  });
+
+  app.delete("/api/consultations/:id", async (req, res) => {
+    try {
+      await storage.deleteConsultation(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete consultation" });
     }
   });
 
@@ -193,147 +244,203 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Patient not found" });
       }
 
-      // Generate comprehensive PDF report
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="rapport-${patient.firstName}-${patient.lastName}.pdf"`);
+      // Generate beautiful PDF report using PDFKit
+      const PDFDocument = require('pdfkit');
       
       // Get consultations and alerts for this patient
       const consultations = await storage.getConsultationsByPatientId(patient.id);
       const alerts = await storage.getAlertsByPatientId(patient.id);
       
-      // Build PDF content with all information
-      let consultationsText = '';
-      consultations.forEach((cons, index) => {
-        consultationsText += `0 -25 Td
-(Consultation ${index + 1} - ${new Date(cons.date).toLocaleDateString('fr-FR')}) Tj
-0 -15 Td
-(  Creatinine: ${cons.creatinine} mg/dL) Tj
-0 -15 Td
-(  Poids: ${cons.weight} kg) Tj
-0 -15 Td
-(  Tension: ${cons.systolicBP}/${cons.diastolicBP} mmHg) Tj
-0 -15 Td
-(  Medecin: ${cons.doctorName}) Tj
-0 -15 Td
-(  Notes: ${cons.notes || 'Aucune'}) Tj`;
+      const doc = new PDFDocument({ margin: 50 });
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="rapport-${patient.firstName}-${patient.lastName}.pdf"`);
+      
+      doc.pipe(res);
+      
+      // Header with logo placeholder and title
+      doc.fontSize(24)
+         .fillColor('#2563eb')
+         .text('RAPPORT MÉDICAL AI4CKD', 50, 50, { align: 'center' });
+      
+      doc.fontSize(14)
+         .fillColor('#6b7280')
+         .text(`Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`, 50, 85, { align: 'center' });
+      
+      // Patient Information Section
+      let yPosition = 130;
+      
+      doc.fontSize(18)
+         .fillColor('#1f2937')
+         .text('INFORMATIONS PATIENT', 50, yPosition);
+      
+      // Add a line under the title
+      doc.moveTo(50, yPosition + 25)
+         .lineTo(550, yPosition + 25)
+         .strokeColor('#e5e7eb')
+         .stroke();
+      
+      yPosition += 40;
+      
+      // Patient details in a table-like format
+      const patientInfo = [
+        ['Nom complet:', `${patient.firstName} ${patient.lastName}`],
+        ['Date de naissance:', new Date(patient.dateOfBirth).toLocaleDateString('fr-FR')],
+        ['Genre:', patient.gender],
+        ['Téléphone:', patient.phone || 'Non renseigné'],
+        ['Email:', patient.email || 'Non renseigné'],
+        ['Adresse:', patient.address || 'Non renseignée'],
+        ['Contact d\'urgence:', patient.emergencyContact || 'Non renseigné'],
+        ['Stade MRC:', patient.ckdStage ? `Stade ${patient.ckdStage}` : 'Non défini']
+      ];
+      
+      patientInfo.forEach(([label, value]) => {
+        doc.fontSize(11)
+           .fillColor('#374151')
+           .text(label, 50, yPosition, { continued: true, width: 150 })
+           .fillColor('#1f2937')
+           .text(value, 200, yPosition);
+        yPosition += 20;
       });
       
-      let alertsText = '';
-      alerts.forEach((alert, index) => {
-        alertsText += `0 -25 Td
-(Alerte ${index + 1} - ${alert.type.toUpperCase()}) Tj
-0 -15 Td
-(  Severite: ${alert.severity}) Tj
-0 -15 Td
-(  Message: ${alert.message}) Tj
-0 -15 Td
-(  Valeur: ${alert.value}) Tj`;
-      });
-
-      const pdfContent = `%PDF-1.4
-1 0 obj
-<<
-/Type /Catalog
-/Pages 2 0 R
->>
-endobj
-
-2 0 obj
-<<
-/Type /Pages
-/Kids [3 0 R]
-/Count 1
->>
-endobj
-
-3 0 obj
-<<
-/Type /Page
-/Parent 2 0 R
-/MediaBox [0 0 612 792]
-/Contents 4 0 R
-/Resources <<
-/Font <<
-/F1 5 0 R
-/F2 6 0 R
->>
->>
->>
-endobj
-
-4 0 obj
-<<
-/Length 1500
->>
-stream
-BT
-/F2 16 Tf
-72 720 Td
-(RAPPORT MEDICAL - ${patient.firstName} ${patient.lastName}) Tj
-/F1 12 Tf
-0 -30 Td
-(Date de generation: ${new Date().toLocaleDateString('fr-FR')}) Tj
-0 -30 Td
-(=== INFORMATIONS PATIENT ===) Tj
-0 -20 Td
-(Nom: ${patient.firstName} ${patient.lastName}) Tj
-0 -15 Td
-(Date de naissance: ${new Date(patient.dateOfBirth).toLocaleDateString('fr-FR')}) Tj
-0 -15 Td
-(Genre: ${patient.gender}) Tj
-0 -15 Td
-(Telephone: ${patient.phone || 'Non renseigne'}) Tj
-0 -15 Td
-(Email: ${patient.email || 'Non renseigne'}) Tj
-0 -15 Td
-(Adresse: ${patient.address || 'Non renseignee'}) Tj
-0 -15 Td
-(Contact urgence: ${patient.emergencyContact || 'Non renseigne'}) Tj
-0 -15 Td
-(Stade MRC: ${patient.ckdStage || 'Non defini'}) Tj
-0 -30 Td
-(=== CONSULTATIONS (${consultations.length}) ===) Tj${consultationsText}
-0 -30 Td
-(=== ALERTES (${alerts.length}) ===) Tj${alertsText}
-ET
-endstream
-endobj
-
-5 0 obj
-<<
-/Type /Font
-/Subtype /Type1
-/BaseFont /Helvetica
->>
-endobj
-
-6 0 obj
-<<
-/Type /Font
-/Subtype /Type1
-/BaseFont /Helvetica-Bold
->>
-endobj
-
-xref
-0 7
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000295 00000 n 
-0000001848 00000 n 
-0000001925 00000 n 
-trailer
-<<
-/Size 7
-/Root 1 0 R
->>
-startxref
-2007
-%%EOF`;
+      // Consultations Section
+      yPosition += 20;
+      doc.fontSize(18)
+         .fillColor('#1f2937')
+         .text(`HISTORIQUE DES CONSULTATIONS (${consultations.length})`, 50, yPosition);
       
-      res.send(Buffer.from(pdfContent));
+      doc.moveTo(50, yPosition + 25)
+         .lineTo(550, yPosition + 25)
+         .strokeColor('#e5e7eb')
+         .stroke();
+      
+      yPosition += 40;
+      
+      if (consultations.length === 0) {
+        doc.fontSize(11)
+           .fillColor('#6b7280')
+           .text('Aucune consultation enregistrée', 50, yPosition);
+        yPosition += 30;
+      } else {
+        consultations.forEach((consultation, index) => {
+          // Check if we need a new page
+          if (yPosition > 700) {
+            doc.addPage();
+            yPosition = 50;
+          }
+          
+          // Consultation header
+          doc.fontSize(14)
+             .fillColor('#059669')
+             .text(`Consultation ${index + 1} - ${new Date(consultation.date).toLocaleDateString('fr-FR')}`, 50, yPosition);
+          
+          yPosition += 20;
+          
+          // Consultation details
+          const consultationInfo = [
+            ['Médecin:', consultation.doctorName],
+            ['Créatinine:', `${consultation.creatinine} mg/dL`],
+            ['Poids:', `${consultation.weight} kg`],
+            ['Tension artérielle:', `${consultation.systolicBP}/${consultation.diastolicBP} mmHg`]
+          ];
+          
+          consultationInfo.forEach(([label, value]) => {
+            doc.fontSize(10)
+               .fillColor('#374151')
+               .text(label, 70, yPosition, { continued: true, width: 120 })
+               .fillColor('#1f2937')
+               .text(value, 190, yPosition);
+            yPosition += 15;
+          });
+          
+          if (consultation.notes) {
+            doc.fontSize(10)
+               .fillColor('#374151')
+               .text('Notes:', 70, yPosition, { continued: true, width: 120 })
+               .fillColor('#1f2937')
+               .text(consultation.notes, 190, yPosition, { width: 350 });
+            yPosition += Math.ceil(consultation.notes.length / 60) * 15;
+          }
+          
+          yPosition += 15;
+        });
+      }
+      
+      // Alerts Section
+      if (yPosition > 650) {
+        doc.addPage();
+        yPosition = 50;
+      }
+      
+      yPosition += 10;
+      doc.fontSize(18)
+         .fillColor('#1f2937')
+         .text(`ALERTES MÉDICALES (${alerts.length})`, 50, yPosition);
+      
+      doc.moveTo(50, yPosition + 25)
+         .lineTo(550, yPosition + 25)
+         .strokeColor('#e5e7eb')
+         .stroke();
+      
+      yPosition += 40;
+      
+      if (alerts.length === 0) {
+        doc.fontSize(11)
+           .fillColor('#6b7280')
+           .text('Aucune alerte active', 50, yPosition);
+      } else {
+        alerts.forEach((alert, index) => {
+          if (yPosition > 700) {
+            doc.addPage();
+            yPosition = 50;
+          }
+          
+          // Alert severity color
+          let alertColor = '#6b7280';
+          if (alert.severity === 'critical') alertColor = '#dc2626';
+          else if (alert.severity === 'high') alertColor = '#ea580c';
+          else if (alert.severity === 'warning') alertColor = '#d97706';
+          
+          doc.fontSize(12)
+             .fillColor(alertColor)
+             .text(`${alert.severity.toUpperCase()} - ${alert.type}`, 50, yPosition);
+          
+          yPosition += 18;
+          
+          doc.fontSize(10)
+             .fillColor('#374151')
+             .text('Message:', 70, yPosition, { continued: true, width: 80 })
+             .fillColor('#1f2937')
+             .text(alert.message, 150, yPosition, { width: 400 });
+          
+          yPosition += 15;
+          
+          doc.fontSize(10)
+             .fillColor('#374151')
+             .text('Valeur:', 70, yPosition, { continued: true, width: 80 })
+             .fillColor('#1f2937')
+             .text(`${alert.value} (seuil: ${alert.threshold})`, 150, yPosition);
+          
+          yPosition += 15;
+          
+          doc.fontSize(9)
+             .fillColor('#6b7280')
+             .text(`Créée le ${new Date(alert.createdAt).toLocaleDateString('fr-FR')} à ${new Date(alert.createdAt).toLocaleTimeString('fr-FR')}`, 70, yPosition);
+          
+          yPosition += 25;
+        });
+      }
+      
+      // Footer
+      const pageCount = doc.bufferedPageRange().count;
+      for (let i = 0; i < pageCount; i++) {
+        doc.switchToPage(i);
+        doc.fontSize(8)
+           .fillColor('#9ca3af')
+           .text(`Page ${i + 1} sur ${pageCount} - Rapport généré par AI4CKD`, 50, 750, { align: 'center' });
+      }
+      
+      doc.end();
     } catch (error) {
       res.status(500).json({ message: "Failed to generate PDF report" });
     }

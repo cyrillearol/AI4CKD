@@ -14,6 +14,7 @@ export interface IStorage {
   getPatientWithRelations(id: string): Promise<PatientWithRelations | undefined>;
   createPatient(patient: InsertPatient): Promise<Patient>;
   updatePatient(id: string, patient: Partial<InsertPatient>): Promise<Patient>;
+  deletePatient(id: string): Promise<void>;
 
   // Consultations
   getConsultation(id: string): Promise<Consultation | undefined>;
@@ -21,6 +22,8 @@ export interface IStorage {
   getConsultationsByPatientId(patientId: string): Promise<Consultation[]>;
   getRecentConsultations(limit?: number): Promise<Consultation[]>;
   createConsultation(consultation: InsertConsultation): Promise<Consultation>;
+  updateConsultation(id: string, consultation: Partial<InsertConsultation>): Promise<Consultation>;
+  deleteConsultation(id: string): Promise<void>;
 
   // Alerts
   getAlert(id: string): Promise<Alert | undefined>;
@@ -93,17 +96,30 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPatient(patient: InsertPatient): Promise<Patient> {
-    const [newPatient] = await db.insert(patients).values(patient).returning();
+    const [newPatient] = await db.insert(patients).values([patient]).returning();
     return newPatient;
   }
 
-  async updatePatient(id: string, patient: Partial<InsertPatient>): Promise<Patient> {
+  async updatePatient(id: string, patientData: Partial<InsertPatient>): Promise<Patient> {
     const [updatedPatient] = await db
       .update(patients)
-      .set(patient)
+      .set({
+        ...patientData,
+        updatedAt: new Date()
+      })
       .where(eq(patients.id, id))
       .returning();
     return updatedPatient;
+  }
+
+  async deletePatient(id: string): Promise<void> {
+    // Delete related records first
+    await db.delete(alerts).where(eq(alerts.patientId, id));
+    await db.delete(consultations).where(eq(consultations.patientId, id));
+    await db.delete(alertThresholds).where(eq(alertThresholds.patientId, id));
+    
+    // Delete the patient
+    await db.delete(patients).where(eq(patients.id, id));
   }
 
   async getConsultation(id: string): Promise<Consultation | undefined> {
@@ -134,6 +150,23 @@ export class DatabaseStorage implements IStorage {
   async createConsultation(consultation: InsertConsultation): Promise<Consultation> {
     const [newConsultation] = await db.insert(consultations).values(consultation).returning();
     return newConsultation;
+  }
+
+  async updateConsultation(id: string, consultation: Partial<InsertConsultation>): Promise<Consultation> {
+    const [updatedConsultation] = await db
+      .update(consultations)
+      .set(consultation)
+      .where(eq(consultations.id, id))
+      .returning();
+    return updatedConsultation;
+  }
+
+  async deleteConsultation(id: string): Promise<void> {
+    // Delete related alerts first
+    await db.delete(alerts).where(eq(alerts.consultationId, id));
+    
+    // Delete the consultation
+    await db.delete(consultations).where(eq(consultations.id, id));
   }
 
   async getAlert(id: string): Promise<Alert | undefined> {
