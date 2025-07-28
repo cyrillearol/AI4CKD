@@ -93,19 +93,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPatient(patient: InsertPatient): Promise<Patient> {
-    const [newPatient] = await db.insert(patients).values({
-      ...patient,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }).returning();
+    const [newPatient] = await db.insert(patients).values(patient).returning();
     return newPatient;
   }
 
   async updatePatient(id: string, patient: Partial<InsertPatient>): Promise<Patient> {
-    const updateData = { ...patient, updatedAt: new Date() };
     const [updatedPatient] = await db
       .update(patients)
-      .set(updateData)
+      .set(patient)
       .where(eq(patients.id, id))
       .returning();
     return updatedPatient;
@@ -198,14 +193,7 @@ export class DatabaseStorage implements IStorage {
     return newAlert;
   }
 
-  async markAlertAsRead(id: string): Promise<Alert> {
-    const [updatedAlert] = await db
-      .update(alerts)
-      .set({ isRead: true })
-      .where(eq(alerts.id, id))
-      .returning();
-    return updatedAlert;
-  }
+
 
   async getAlertThresholds(): Promise<AlertThreshold[]> {
     return await db.select().from(alertThresholds).orderBy(alertThresholds.type);
@@ -285,6 +273,13 @@ export class DatabaseStorage implements IStorage {
       todayConsultations: todayConsultationsResult.count,
       activeAlerts: activeAlertsResult.count,
     };
+  }
+
+  async markAlertAsRead(alertId: string): Promise<void> {
+    await db
+      .update(alerts)
+      .set({ isRead: true })
+      .where(eq(alerts.id, alertId));
   }
 }
 

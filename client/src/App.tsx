@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Dashboard from "@/pages/dashboard";
 import Patients from "@/pages/patients";
 import Consultations from "@/pages/consultations";
+import AlertsPage from "@/pages/alerts";
+import ReportsPage from "@/pages/reports";
 import AuthPage from "@/pages/auth-page";
 import NotFound from "@/pages/not-found";
 import Header from "@/components/layout/header";
@@ -28,6 +30,8 @@ function Router() {
                   <ProtectedRoute path="/" component={Dashboard} />
                   <ProtectedRoute path="/patients" component={Patients} />
                   <ProtectedRoute path="/consultations" component={Consultations} />
+                  <ProtectedRoute path="/alerts" component={AlertsPage} />
+                  <ProtectedRoute path="/reports" component={ReportsPage} />
                   <Route component={NotFound} />
                 </Switch>
               </main>

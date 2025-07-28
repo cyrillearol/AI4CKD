@@ -85,28 +85,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Alerts routes
   app.get("/api/alerts", async (req, res) => {
     try {
-      const alerts = await storage.getAlerts();
+      const alerts = await storage.getAlertsWithPatients();
       res.json(alerts);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch alerts" });
+      res.status(500).json({ message: "Erreur lors de la récupération des alertes" });
     }
   });
 
   app.get("/api/alerts/unread", async (req, res) => {
     try {
-      const alerts = await storage.getUnreadAlerts();
+      const alerts = await storage.getUnreadAlertsWithPatients();
       res.json(alerts);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch unread alerts" });
+      res.status(500).json({ message: "Erreur lors de la récupération des alertes" });
     }
   });
 
-  app.patch("/api/alerts/:id/read", async (req, res) => {
+  app.put("/api/alerts/:id/read", async (req, res) => {
     try {
-      const alert = await storage.markAlertAsRead(req.params.id);
-      res.json(alert);
+      await storage.markAlertAsRead(req.params.id);
+      res.json({ message: "Alerte marquée comme lue" });
     } catch (error) {
-      res.status(500).json({ message: "Failed to mark alert as read" });
+      res.status(500).json({ message: "Erreur lors de la mise à jour de l'alerte" });
     }
   });
 

@@ -3,12 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import PatientCard from "@/components/patients/patient-card";
+import PatientForm from "@/components/patients/patient-form";
 import { Search, Plus } from "lucide-react";
 import { useState } from "react";
 import type { Patient } from "@shared/schema";
 
 export default function Patients() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [showForm, setShowForm] = useState(false);
 
   const { data: patients = [], isLoading } = useQuery<Patient[]>({
     queryKey: ["/api/patients"]
@@ -18,11 +20,25 @@ export default function Patients() {
     `${patient.firstName} ${patient.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  if (showForm) {
+    return (
+      <div className="space-y-6">
+        <PatientForm 
+          onSuccess={() => setShowForm(false)}
+          onCancel={() => setShowForm(false)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Gestion des Patients</h1>
-        <Button className="bg-medical-blue hover:bg-blue-700">
+        <Button 
+          className="bg-medical-blue hover:bg-blue-700"
+          onClick={() => setShowForm(true)}
+        >
           <Plus className="mr-2 h-4 w-4" />
           Nouveau Patient
         </Button>
@@ -54,7 +70,10 @@ export default function Patients() {
                 {searchTerm ? "Aucun patient trouvé pour cette recherche" : "Aucun patient enregistré"}
               </div>
               {!searchTerm && (
-                <Button className="bg-medical-blue hover:bg-blue-700">
+                <Button 
+                  className="bg-medical-blue hover:bg-blue-700"
+                  onClick={() => setShowForm(true)}
+                >
                   <Plus className="mr-2 h-4 w-4" />
                   Ajouter le premier patient
                 </Button>
