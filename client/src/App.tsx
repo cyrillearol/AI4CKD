@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Dashboard from "@/pages/dashboard";
 import Patients from "@/pages/patients";
+import PatientDetails from "@/pages/patient-details";
 import Consultations from "@/pages/consultations";
 import AlertsPage from "@/pages/alerts";
 import ReportsPage from "@/pages/reports";
@@ -29,6 +30,7 @@ function Router() {
                 <Switch>
                   <ProtectedRoute path="/" component={Dashboard} />
                   <ProtectedRoute path="/patients" component={Patients} />
+                  <ProtectedRoute path="/patients/:id" component={PatientDetails} />
                   <ProtectedRoute path="/consultations" component={Consultations} />
                   <ProtectedRoute path="/alerts" component={AlertsPage} />
                   <ProtectedRoute path="/reports" component={ReportsPage} />

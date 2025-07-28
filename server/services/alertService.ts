@@ -1,36 +1,128 @@
 import { storage } from "../storage";
 import { type Consultation, type InsertAlert } from "@shared/schema";
-
-interface AlertRule {
-  type: string;
-  checkFunction: (consultation: Consultation, previousConsultations: Consultation[]) => Promise<InsertAlert | null>;
-}
+import { randomUUID } from "crypto";
 
 class AlertService {
-  private rules: AlertRule[] = [
-    {
-      type: "creatinine",
-      checkFunction: this.checkCreatinine.bind(this),
-    },
-    {
-      type: "blood_pressure",
-      checkFunction: this.checkBloodPressure.bind(this),
-    },
-    {
-      type: "weight_loss",
-      checkFunction: this.checkWeightLoss.bind(this),
-    },
-  ];
-
   async checkAndCreateAlerts(consultation: Consultation): Promise<void> {
-    const previousConsultations = await storage.getConsultationsByPatientId(consultation.patientId);
+    console.log("Checking alerts for consultation:", consultation.id);
     
-    for (const rule of this.rules) {
-      const alert = await rule.checkFunction(consultation, previousConsultations);
-      if (alert) {
-        await storage.createAlert(alert);
+    try {
+      // Create default thresholds if none exist
+      await this.ensureDefaultThresholds();
+      
+      // Get thresholds
+      const thresholds = await storage.getGlobalThresholds();
+      console.log("Available thresholds:", thresholds);
+      
+      // Check creatinine levels
+      if (consultation.creatinine) {
+        const creatinineValue = parseFloat(consultation.creatinine.toString());
+        console.log("Checking creatinine:", creatinineValue);
+        
+        // Use default thresholds if none configured
+        let severity: string | null = null;
+        let thresholdValue: string = '';
+        
+        if (creatinineValue >= 3.0) {
+          severity = 'critical';
+          thresholdValue = '3.0';
+        } else if (creatinineValue >= 2.0) {
+          severity = 'high';
+          thresholdValue = '2.0';
+        } else if (creatinineValue >= 1.3) {
+          severity = 'warning';
+          thresholdValue = '1.3';
+        }
+        
+        if (severity) {
+          console.log(`Creating creatinine alert with severity: ${severity}`);
+          await this.createAlert({
+            patientId: consultation.patientId,
+            consultationId: consultation.id,
+            type: 'creatinine',
+            severity,
+            message: `Niveau de créatinine ${severity === 'critical' ? 'critique' : severity === 'high' ? 'élevé' : 'anormal'}: ${creatinineValue} mg/dL`,
+            value: creatinineValue.toString(),
+            threshold: `>${thresholdValue} mg/dL`,
+          });
+        }
       }
+      
+      // Check blood pressure
+      if (consultation.systolicBP && consultation.diastolicBP) {
+        const systolicBP = consultation.systolicBP;
+        const diastolicBP = consultation.diastolicBP;
+        console.log("Checking BP:", systolicBP, "/", diastolicBP);
+        
+        let severity: string | null = null;
+        let thresholdValue: string = '';
+        
+        // Check systolic BP with default thresholds
+        if (systolicBP >= 180) {
+          severity = 'critical';
+          thresholdValue = '180';
+        } else if (systolicBP >= 160) {
+          severity = 'high';  
+          thresholdValue = '160';
+        } else if (systolicBP >= 140) {
+          severity = 'warning';
+          thresholdValue = '140';
+        }
+        
+        if (severity) {
+          console.log(`Creating BP alert with severity: ${severity}`);
+          await this.createAlert({
+            patientId: consultation.patientId,
+            consultationId: consultation.id,
+            type: 'blood_pressure',
+            severity,
+            message: `Tension artérielle ${severity === 'critical' ? 'critique' : severity === 'high' ? 'élevée' : 'anormale'}: ${systolicBP}/${diastolicBP} mmHg`,
+            value: `${systolicBP}/${diastolicBP}`,
+            threshold: `>${thresholdValue} mmHg systolique`,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error in checkAndCreateAlerts:", error);
+      throw error;
     }
+  }
+
+  private async ensureDefaultThresholds(): Promise<void> {
+    const existingThresholds = await storage.getGlobalThresholds();
+    
+    if (existingThresholds.length === 0) {
+      console.log("Creating default thresholds...");
+      
+      // Create default creatinine thresholds
+      await storage.createOrUpdateThreshold({
+        type: 'creatinine',
+        criticalValue: '3.0',
+        highValue: '2.0', 
+        warningValue: '1.3',
+        isGlobal: true,
+      });
+      
+      // Create default blood pressure thresholds
+      await storage.createOrUpdateThreshold({
+        type: 'blood_pressure',
+        criticalValue: '180',
+        highValue: '160',
+        warningValue: '140',
+        isGlobal: true,
+      });
+    }
+  }
+
+  private async createAlert(alertData: Omit<InsertAlert, 'id' | 'createdAt'>): Promise<void> {
+    const alert = {
+      id: randomUUID(),
+      ...alertData,
+      createdAt: new Date(),
+    };
+    
+    console.log("Creating alert:", alert);
+    await storage.createAlert(alert);
   }
 
   private async checkCreatinine(consultation: Consultation, previousConsultations: Consultation[]): Promise<InsertAlert | null> {

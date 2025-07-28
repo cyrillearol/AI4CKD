@@ -165,6 +165,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Patient consultations
+  app.get("/api/patients/:id/consultations", async (req, res) => {
+    try {
+      const consultations = await storage.getConsultationsByPatientId(req.params.id);
+      res.json(consultations);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch patient consultations" });
+    }
+  });
+
+  // Patient alerts
+  app.get("/api/patients/:id/alerts", async (req, res) => {
+    try {
+      const alerts = await storage.getAlertsByPatientId(req.params.id);
+      res.json(alerts);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch patient alerts" });
+    }
+  });
+
   // PDF generation route
   app.get("/api/patients/:id/pdf", async (req, res) => {
     try {
@@ -173,11 +193,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Patient not found" });
       }
 
-      // Generate simple PDF report
+      // Generate comprehensive PDF report
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="rapport-${patient.firstName}-${patient.lastName}.pdf"`);
       
-      // Simple PDF content
+      // Get consultations and alerts for this patient
+      const consultations = await storage.getConsultationsByPatientId(patient.id);
+      const alerts = await storage.getAlertsByPatientId(patient.id);
+      
+      // Build PDF content with all information
+      let consultationsText = '';
+      consultations.forEach((cons, index) => {
+        consultationsText += `0 -25 Td
+(Consultation ${index + 1} - ${new Date(cons.date).toLocaleDateString('fr-FR')}) Tj
+0 -15 Td
+(  Creatinine: ${cons.creatinine} mg/dL) Tj
+0 -15 Td
+(  Poids: ${cons.weight} kg) Tj
+0 -15 Td
+(  Tension: ${cons.systolicBP}/${cons.diastolicBP} mmHg) Tj
+0 -15 Td
+(  Medecin: ${cons.doctorName}) Tj
+0 -15 Td
+(  Notes: ${cons.notes || 'Aucune'}) Tj`;
+      });
+      
+      let alertsText = '';
+      alerts.forEach((alert, index) => {
+        alertsText += `0 -25 Td
+(Alerte ${index + 1} - ${alert.type.toUpperCase()}) Tj
+0 -15 Td
+(  Severite: ${alert.severity}) Tj
+0 -15 Td
+(  Message: ${alert.message}) Tj
+0 -15 Td
+(  Valeur: ${alert.value}) Tj`;
+      });
+
       const pdfContent = `%PDF-1.4
 1 0 obj
 <<
@@ -203,6 +255,7 @@ endobj
 /Resources <<
 /Font <<
 /F1 5 0 R
+/F2 6 0 R
 >>
 >>
 >>
@@ -210,19 +263,38 @@ endobj
 
 4 0 obj
 <<
-/Length 200
+/Length 1500
 >>
 stream
 BT
-/F1 12 Tf
+/F2 16 Tf
 72 720 Td
-(Rapport Medical - ${patient.firstName} ${patient.lastName}) Tj
+(RAPPORT MEDICAL - ${patient.firstName} ${patient.lastName}) Tj
+/F1 12 Tf
+0 -30 Td
+(Date de generation: ${new Date().toLocaleDateString('fr-FR')}) Tj
+0 -30 Td
+(=== INFORMATIONS PATIENT ===) Tj
 0 -20 Td
-(Stade MRC: ${patient.ckdStage}) Tj
-0 -20 Td
+(Nom: ${patient.firstName} ${patient.lastName}) Tj
+0 -15 Td
 (Date de naissance: ${new Date(patient.dateOfBirth).toLocaleDateString('fr-FR')}) Tj
-0 -20 Td
+0 -15 Td
 (Genre: ${patient.gender}) Tj
+0 -15 Td
+(Telephone: ${patient.phone || 'Non renseigne'}) Tj
+0 -15 Td
+(Email: ${patient.email || 'Non renseigne'}) Tj
+0 -15 Td
+(Adresse: ${patient.address || 'Non renseignee'}) Tj
+0 -15 Td
+(Contact urgence: ${patient.emergencyContact || 'Non renseigne'}) Tj
+0 -15 Td
+(Stade MRC: ${patient.ckdStage || 'Non defini'}) Tj
+0 -30 Td
+(=== CONSULTATIONS (${consultations.length}) ===) Tj${consultationsText}
+0 -30 Td
+(=== ALERTES (${alerts.length}) ===) Tj${alertsText}
 ET
 endstream
 endobj
@@ -235,21 +307,30 @@ endobj
 >>
 endobj
 
+6 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica-Bold
+>>
+endobj
+
 xref
-0 6
+0 7
 0000000000 65535 f 
 0000000009 00000 n 
 0000000058 00000 n 
 0000000115 00000 n 
-0000000274 00000 n 
-0000000526 00000 n 
+0000000295 00000 n 
+0000001848 00000 n 
+0000001925 00000 n 
 trailer
 <<
-/Size 6
+/Size 7
 /Root 1 0 R
 >>
 startxref
-625
+2007
 %%EOF`;
       
       res.send(Buffer.from(pdfContent));
