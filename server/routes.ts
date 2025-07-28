@@ -4,9 +4,12 @@ import { storage } from "./storage";
 import { insertPatientSchema, insertConsultationSchema, insertAlertThresholdSchema } from "@shared/schema";
 import { alertService } from "./services/alertService";
 // import { pdfService } from "./services/pdfService";
+import { setupAuth } from "./auth";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup authentication routes
+  setupAuth(app);
   // Patients routes
   app.get("/api/patients", async (req, res) => {
     try {

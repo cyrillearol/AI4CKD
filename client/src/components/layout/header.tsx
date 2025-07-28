@@ -1,8 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
-import { Bell, Heart } from "lucide-react";
+import { Bell, Heart, LogOut, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function Header() {
+  const { user, logoutMutation } = useAuth();
   const { data: stats } = useQuery<{
     totalPatients: number;
     todayConsultations: number;
@@ -10,6 +21,10 @@ export default function Header() {
   }>({
     queryKey: ["/api/stats"]
   });
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
@@ -33,14 +48,32 @@ export default function Header() {
                 </span>
               )}
             </div>
-            <div className="flex items-center space-x-2 text-sm">
-              <div className="w-8 h-8 bg-medical-blue text-white rounded-full flex items-center justify-center text-sm font-semibold">
-                DK
-              </div>
-              <span className="font-medium">Dr. Kouakou</span>
-              <span className="text-gray-400">|</span>
-              <span className="text-gray-500">Néphrologue</span>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center space-x-2 text-sm">
+                  <div className="w-8 h-8 bg-medical-blue text-white rounded-full flex items-center justify-center text-sm font-semibold">
+                    {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
+                  </div>
+                  <div className="text-left">
+                    <div className="font-medium">Dr. {user?.firstName} {user?.lastName}</div>
+                    <div className="text-xs text-gray-500 capitalize">{user?.role}</div>
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Mon Compte</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>
+                  <User className="mr-2 h-4 w-4" />
+                  <span>Profil</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} disabled={logoutMutation.isPending}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Se déconnecter</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>

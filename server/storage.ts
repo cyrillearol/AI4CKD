@@ -1,8 +1,13 @@
-import { patients, consultations, alerts, alertThresholds, type Patient, type InsertPatient, type Consultation, type InsertConsultation, type Alert, type InsertAlert, type AlertThreshold, type InsertAlertThreshold, type PatientWithRelations, type AlertWithPatient } from "@shared/schema";
+import { users, patients, consultations, alerts, alertThresholds, type User, type InsertUser, type Patient, type InsertPatient, type Consultation, type InsertConsultation, type Alert, type InsertAlert, type AlertThreshold, type InsertAlertThreshold, type PatientWithRelations, type AlertWithPatient } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 
 export interface IStorage {
+  // Users
+  getUser(id: number): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  createUser(insertUser: InsertUser): Promise<User>;
+
   // Patients
   getPatient(id: string): Promise<Patient | undefined>;
   getPatients(): Promise<Patient[]>;
@@ -40,6 +45,28 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values({
+        ...insertUser,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .returning();
+    return user;
+  }
+
   async getPatient(id: string): Promise<Patient | undefined> {
     const [patient] = await db.select().from(patients).where(eq(patients.id, id));
     return patient || undefined;

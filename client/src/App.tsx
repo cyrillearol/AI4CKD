@@ -6,38 +6,48 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Dashboard from "@/pages/dashboard";
 import Patients from "@/pages/patients";
 import Consultations from "@/pages/consultations";
+import AuthPage from "@/pages/auth-page";
 import NotFound from "@/pages/not-found";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
+import { AuthProvider } from "@/hooks/use-auth";
+import { ProtectedRoute } from "@/lib/protected-route";
 
 function Router() {
   return (
-    <div className="min-h-screen bg-medical-gray">
-      <Header />
-      <div className="max-w-7xl mx-auto px-6 py-6">
-        <div className="grid grid-cols-12 gap-6">
-          <Sidebar />
-          <main className="col-span-9">
-            <Switch>
-              <Route path="/" component={Dashboard} />
-              <Route path="/patients" component={Patients} />
-              <Route path="/consultations" component={Consultations} />
-              <Route component={NotFound} />
-            </Switch>
-          </main>
+    <Switch>
+      <Route path="/auth" component={AuthPage} />
+      <Route>
+        <div className="min-h-screen bg-medical-gray">
+          <Header />
+          <div className="max-w-7xl mx-auto px-6 py-6">
+            <div className="grid grid-cols-12 gap-6">
+              <Sidebar />
+              <main className="col-span-9">
+                <Switch>
+                  <ProtectedRoute path="/" component={Dashboard} />
+                  <ProtectedRoute path="/patients" component={Patients} />
+                  <ProtectedRoute path="/consultations" component={Consultations} />
+                  <Route component={NotFound} />
+                </Switch>
+              </main>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      </Route>
+    </Switch>
   );
 }
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
