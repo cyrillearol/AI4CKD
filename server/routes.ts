@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { randomUUID } from "crypto";
 import { storage } from "./storage";
 import { insertPatientSchema, insertConsultationSchema, insertAlertThresholdSchema } from "@shared/schema";
 import { alertService } from "./services/alertService";
@@ -67,18 +68,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/consultations", async (req, res) => {
     try {
-      const validatedData = insertConsultationSchema.parse(req.body);
-      const consultation = await storage.createConsultation(validatedData);
+      console.log("Received consultation data:", req.body);
+      
+      // Custom validation for consultation
+      const consultationData = {
+        id: randomUUID(),
+        patientId: req.body.patientId,
+        creatinine: req.body.creatinine,
+        weight: req.body.weight,
+        systolicBP: req.body.systolicBP,
+        diastolicBP: req.body.diastolicBP,
+        notes: req.body.notes || "",
+        doctorName: req.body.doctorName,
+        date: new Date(),
+        createdAt: new Date(),
+      };
+
+      console.log("Processed consultation data:", consultationData);
+      
+      const consultation = await storage.createConsultation(consultationData);
       
       // Check for alerts after creating consultation
-      await alertService.checkAndCreateAlerts(consultation);
+      try {
+        await alertService.checkAndCreateAlerts(consultation);
+      } catch (alertError) {
+        console.warn("Alert generation failed:", alertError);
+      }
       
       res.status(201).json(consultation);
     } catch (error) {
+      console.error("Consultation creation error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid consultation data", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to create consultation" });
+      res.status(500).json({ message: "Failed to create consultation", error: String(error) });
     }
   });
 
