@@ -180,3 +180,7 @@ Développé pour améliorer la prise en charge des patients atteints de maladie 
 ## 📞 Support
 
 Pour toute question ou problème, veuillez ouvrir une issue sur le repository GitHub. 
+## 🔧 Lien du site web déployé:
+
+ https://ai4ckd-4-i41a.onrender.com/ 
+
